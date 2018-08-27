@@ -20,7 +20,7 @@ class CleanDirWebpackPlugin
             exclude:       [],
             verbose:       true,
             silent:        false,
-            dryRun:        true,
+            dryRun:        false,
             root:          path.dirname(module.parent.filename),
             allowExternal: false,
             ...options,
@@ -86,8 +86,8 @@ class CleanDirWebpackPlugin
 
     clean() {
         if (!this.opt.paths.length) {
-            this.opt.verbose && console.log(chalk.yellow(`${PLUGIN_NAME}: project root has to be an absolute path. Skipping everything!`));
-            return [[undefined, "paths are empty, nothing to clean"]];
+            !this.opt.silent && this.opt.verbose && console.log(chalk.yellow(`${PLUGIN_NAME}: paths is empty. Skipping everything!`));
+            return [[undefined, "paths is empty, nothing to clean"]];
         }
 
         let cwd = process.cwd();
@@ -125,7 +125,7 @@ class CleanDirWebpackPlugin
                 // prevent from deleting external files
                 if (!pathToRemove.includes(projectRoot) && !this.opt.allowExternal) {
                     results.push([pathToRemove, "skipped. Outside of root dir."]);
-                    console.log(chalk.yellow(`${PLUGIN_NAME}: "${pathToRemove}" is outside of the setted root directory. Skipping..`));
+                    !this.opt.silent && console.log(chalk.yellow(`${PLUGIN_NAME}: "${pathToRemove}" is outside of the setted root directory. Skipping..`));
                     return;
                 }
 
@@ -152,23 +152,24 @@ class CleanDirWebpackPlugin
                 // prevent from deleting webpack dir
                 if (matchedDirectories.includes(webpackDir)) {
                     results.push([pathToRemove, "skipped. Will delete webpack."]);
-                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete webpack. Skipping..`));
+                    !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete webpack. Skipping..`));
                     return;
                 }
 
                 // prevent from deleting project root
                 if (matchedDirectories.includes(projectRoot)) {
                     results.push([pathToRemove, "skipped. Will delete root directory."]);
-                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete project directory. Skipping..`));
+                    !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete project directory. Skipping..`));
                     return;
                 }
 
                 // prevent from deleting project root
                 if (matchedDirectories.includes(cwd) || matchedDirectories.includes(dirName)) {
                     results.push([pathToRemove, "skipped. Will delete working directory."]);
-                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete working directory. Skipping..`));
+                    !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete working directory. Skipping..`));
                     return;
                 }
+
                 if (!this.opt.dryRun) {
                     matchedFiles.forEach((filePath) => {
                         if (CleanDirWebpackPlugin.removeFile(filePath)) {

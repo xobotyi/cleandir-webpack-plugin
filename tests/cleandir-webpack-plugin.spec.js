@@ -1,6 +1,7 @@
 const CleanDirWebpackPlugin = require("./../cleandir-webpack-plugin");
 const path = require("path");
 const fs = require("fs");
+const rimraf = require("rimraf");
 
 describe("cleandir-webpack-plugin",
          () => {
@@ -217,5 +218,68 @@ describe("cleandir-webpack-plugin",
                      fs.unlinkSync(testFilePath);
                      fs.rmdirSync(testDirPath);
                  });
+             });
+
+             describe(".clean()", () => {
+                 let testDirPath = path.join(__dirname, 'test_dir');
+                 let testFilePath1 = path.join(testDirPath, 'testFile.js');
+                 let testFilePath2 = path.join(testDirPath, 'testFile.css');
+                 let testFilePath3 = path.join(__dirname, 'testFile.html');
+
+                 if (process.platform === "win32") {
+                     testDirPath = CleanDirWebpackPlugin.fixWindowsPath(testDirPath);
+                     testFilePath1 = CleanDirWebpackPlugin.fixWindowsPath(testFilePath1);
+                     testFilePath2 = CleanDirWebpackPlugin.fixWindowsPath(testFilePath2);
+                     testFilePath3 = CleanDirWebpackPlugin.fixWindowsPath(testFilePath3);
+                 }
+
+                 beforeEach(() => {
+                     rimraf.sync(testDirPath);
+                     rimraf.sync(testFilePath3);
+
+                     fs.mkdirSync(testDirPath);
+                     fs.writeFileSync(testFilePath1, "");
+                     fs.writeFileSync(testFilePath2, "");
+                     fs.writeFileSync(testFilePath3, "");
+                 });
+
+                 afterEach(() => {
+                     rimraf.sync(testDirPath);
+                     rimraf.sync(testFilePath3);
+                 });
+
+                 it("should skip if paths is empty", () => {
+                     const plugin = new CleanDirWebpackPlugin({paths: [], silent: true});
+                     const result = plugin.clean();
+
+                     expect(result[0][0]).toBeUndefined();
+                     expect(result[0][1]).toEqual("paths is empty, nothing to clean");
+                 });
+
+                 it("should skip external files if its not allowed", () => {
+                     const plugin = new CleanDirWebpackPlugin({paths: ["./../testFile.html"], silent: true, root: testDirPath});
+                     const result = plugin.clean();
+
+                     expect(result[0][0]).toEqual(testFilePath3);
+                     expect(result[0][1]).toEqual("skipped. Outside of root dir.");
+                 });
+
+                 it("should properly process glob patterns", () => {
+                     const plugin = new CleanDirWebpackPlugin({paths: ["./*.css"], silent: false, root: testDirPath});
+                     const result = plugin.clean();
+
+                     expect(fs.existsSync(testFilePath1)).toBeTruthy();
+                     expect(fs.existsSync(testFilePath2)).toBeFalsy();
+                 });
+
+                 it("should properly process exclusion glob patterns", () => {
+                     const plugin = new CleanDirWebpackPlugin({paths: ["*"], exclude: ["*.js"], silent: false, root: testDirPath});
+                     const result = plugin.clean();
+
+                     expect(fs.existsSync(testFilePath1)).toBeTruthy();
+                     expect(fs.existsSync(testFilePath2)).toBeFalsy();
+                 });
+
+
              });
          });
