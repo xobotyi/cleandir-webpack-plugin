@@ -14,7 +14,7 @@ const STAGES = [STAGE_BEFORE, STAGE_AFTER];
 class CleanDirWebpackPlugin
 {
     constructor(paths, options) {
-        if (typeof paths === 'string') {
+        if (typeof paths === "string") {
             if (!paths) {
                 throw new TypeError(`paths expected to be a valuable string`);
             }
@@ -38,7 +38,7 @@ class CleanDirWebpackPlugin
             ...options,
         };
 
-        if (typeof this.opt.exclude === 'string') {
+        if (typeof this.opt.exclude === "string") {
             if (!this.opt.exclude) {
                 throw new TypeError(`options.exclude expected to be a valuable string`);
             }
@@ -158,7 +158,7 @@ class CleanDirWebpackPlugin
                     return;
                 }
 
-                pathToRemove = pathToRemove.slice(-1) === '/' ? pathToRemove + '**' : pathToRemove;
+                pathToRemove = pathToRemove.slice(-1) === "/" ? pathToRemove + "**" : pathToRemove;
 
                 const ignored = [];
                 const removed = [];
