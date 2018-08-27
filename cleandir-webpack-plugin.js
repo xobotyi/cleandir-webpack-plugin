@@ -13,6 +13,10 @@ const STAGES = [STAGE_BEFORE, STAGE_AFTER];
 
 class CleanDirWebpackPlugin
 {
+    /**
+     * @param paths {array<string>|string}
+     * @param options {object}
+     */
     constructor(paths, options) {
         if (typeof paths === "string") {
             if (!paths) {
@@ -83,6 +87,12 @@ class CleanDirWebpackPlugin
         this.hookCallback = this.hookCallback.bind(this);
     }
 
+    /**
+     * @param pathToFix {string}
+     * @param forceWindowsSeparatorSplit {boolean}
+     *
+     * @return {string}
+     */
     static fixWindowsPath(pathToFix, forceWindowsSeparatorSplit = false) {
         pathToFix = pathToFix.split(forceWindowsSeparatorSplit ? path.win32.sep : path.sep);
         pathToFix[0] = pathToFix[0].toUpperCase();
@@ -90,6 +100,10 @@ class CleanDirWebpackPlugin
         return pathToFix.join("/");
     }
 
+    /**
+     * @param filePath {string}
+     * @return {boolean}
+     */
     static removeFile(filePath) {
         try {
             fs.unlinkSync(filePath);
@@ -105,6 +119,10 @@ class CleanDirWebpackPlugin
         return true;
     }
 
+    /**
+     * @param dirPath {string}
+     * @return {boolean}
+     */
     static removeDir(dirPath) {
         try {
             fs.rmdirSync(dirPath);
@@ -230,6 +248,10 @@ class CleanDirWebpackPlugin
         return results;
     }
 
+    /**
+     * @param arg
+     * @param callback {function}
+     */
     hookCallback(arg, callback) {
         this.clean();
 

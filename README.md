@@ -30,7 +30,7 @@ module.exports = {
 Paths can be a valuable string or an array of strings.  
 _Each string should be a valid glob pattern_ (node-glob is used under the hood).
 
-## options _(optional)_
+#### options _(optional)_
 ```javascript
 const options = {
     // The momen when cleanup will be triggered, before or after emitting assets to output dir.
