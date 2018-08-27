@@ -1,15 +1,14 @@
-const fs = require('fs');
-const path = require('path');
-const rimraf = require('rimraf');
-const chalk = require('chalk');
-const glob = require('glob');
+const fs = require("fs");
+const path = require("path");
+const chalk = require("chalk");
+const glob = require("glob");
 
-const IS_WINDOWS = require('os').platform() === 'win32';
+const IS_WINDOWS = require("os").platform() === "win32";
 
 const PLUGIN_NAME = "cleandir-webpack-plugin";
 
-const STAGE_BEFORE = 'before';
-const STAGE_AFTER = 'after';
+const STAGE_BEFORE = "before";
+const STAGE_AFTER = "after";
 const STAGES = [STAGE_BEFORE, STAGE_AFTER];
 
 class CleanDirWebpackPlugin
@@ -47,8 +46,41 @@ class CleanDirWebpackPlugin
         return pathToFix.join("/");
     }
 
-    static isAbsolutePath(pathToCheck) {
-        return path.normalize(pathToCheck + path.sep) === path.normalize(path.resolve(pathToCheck) + path.sep);
+    static removeFile(filePath) {
+        try {
+            fs.unlinkSync(filePath);
+        }
+        catch (e) {
+            if (e.code === "ENOENT") {
+                return true;
+            }
+
+            throw e;
+        }
+
+        return true;
+    }
+
+    static removeDir(dirPath) {
+        try {
+            fs.rmdirSync(dirPath);
+        }
+        catch (e) {
+            switch (e.code) {
+                case "ENOENT":
+                    return true;
+
+                case "ENOTEMPTY":
+                    return false;
+
+                case "ENOTDIR":
+                    return this.removeFile(dirPath);
+            }
+
+            throw e;
+        }
+
+        return true;
     }
 
     clean() {
@@ -57,7 +89,7 @@ class CleanDirWebpackPlugin
             return [[undefined, "paths are empty, nothing to clean"]];
         }
 
-        if (!CleanDirWebpackPlugin.isAbsolutePath(this.opt.root)) {
+        if (!path.isAbsolute(this.opt.root)) {
             this.opt.verbose && console.log(chalk.red(`${PLUGIN_NAME}: project root has to be an absolute path. Skipping everything!`));
             return [[this.opt.root, "root path has to be an absolute"]];
         }
@@ -75,98 +107,94 @@ class CleanDirWebpackPlugin
         }
 
         const results = [];
-        let excluded = [];
+        const excludedPaths = [];
 
-        this.opt.exclude.forEach(excludedGlob => {
-            excluded = excluded.concat(glob.sync(excludedGlob,
-                                                 {
-                                                     cwd:      projectRoot,
-                                                     absolute: true,
-                                                     silent:   true,
-                                                 }));
-        });
+        this.opt.exclude
+            .forEach(excludedGlob => {
+                excludedPaths.push(...glob.sync(excludedGlob,
+                                                {
+                                                    cwd:      projectRoot,
+                                                    absolute: true,
+                                                }));
+            });
 
-        this.opt.paths.forEach((pathToRemove) => {
-            pathToRemove = path.resolve(projectRoot, pathToRemove);
+        this.opt.paths
+            .forEach((pathToRemove) => {
+                pathToRemove = path.resolve(projectRoot, pathToRemove);
 
-            if (IS_WINDOWS) {
-                pathToRemove = CleanDirWebpackPlugin.fixWindowsPath(pathToRemove);
-            }
+                if (IS_WINDOWS) {
+                    pathToRemove = CleanDirWebpackPlugin.fixWindowsPath(pathToRemove);
+                }
 
-            // prevent from deleting external files
-            if (!pathToRemove.includes(projectRoot) && !this.opt.allowExternal) {
-                results.push([pathToRemove, "skipped. Outside of root dir."]);
-                console.log(chalk.yellow(`${PLUGIN_NAME}: '${pathToRemove}' is outside of the setted root directory. Skipping..`));
-                return;
-            }
+                // prevent from deleting external files
+                if (!pathToRemove.includes(projectRoot) && !this.opt.allowExternal) {
+                    results.push([pathToRemove, "skipped. Outside of root dir."]);
+                    console.log(chalk.yellow(`${PLUGIN_NAME}: "${pathToRemove}" is outside of the setted root directory. Skipping..`));
+                    return;
+                }
 
-            /** @type array */
-            const ignored = [];
-            const matchedFiles = glob.sync(pathToRemove,
-                                           {
-                                               cwd:      projectRoot,
-                                               absolute: true,
-                                               silent:   true,
-                                               ignore:   this.opt.exclude,
-                                           })
-                                     .filter(match => {
-                                         if (excluded.includes(match)) {
-                                             ignored.push(match);
-                                             return false;
-                                         }
+                const ignored = [];
+                const removed = [];
 
-                                         return true;
-                                     });
+                const matchedDirectories = [];
+                const matchedFiles = [];
 
-            // prevent from deleting webpack dir
-            if (matchedFiles.includes(webpackDir)) {
-                results.push([pathToRemove, "skipped. Will delete webpack."]);
-                console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete webpack. Skipping..`));
-                return;
-            }
+                glob.sync(pathToRemove, {
+                        cwd:      projectRoot,
+                        absolute: true,
+                    })
+                    .forEach(match => {
+                        if (excludedPaths.includes(match)) {
+                            return ignored.push(match);
+                        }
 
-            // prevent from deleting project root
-            if (matchedFiles.includes(projectRoot)) {
-                results.push([pathToRemove, "skipped. Will delete root directory."]);
-                console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete project directory. Skipping..`));
-                return;
-            }
+                        match.slice(-1) === "/"
+                        ? matchedDirectories.unshift(match)
+                        : matchedFiles.unshift(match);
+                    });
 
-            // prevent from deleting project root
-            if (matchedFiles.includes(cwd) || matchedFiles.includes(dirName)) {
-                results.push([pathToRemove, "skipped. Will delete working directory."]);
-                console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete working directory. Skipping..`));
-                return;
-            }
+                // prevent from deleting webpack dir
+                if (matchedDirectories.includes(webpackDir)) {
+                    results.push([pathToRemove, "skipped. Will delete webpack."]);
+                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete webpack. Skipping..`));
+                    return;
+                }
 
-            const directories = [];
-            const removed = [];
+                // prevent from deleting project root
+                if (matchedDirectories.includes(projectRoot)) {
+                    results.push([pathToRemove, "skipped. Will delete root directory."]);
+                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete project directory. Skipping..`));
+                    return;
+                }
 
-            matchedFiles.forEach(path => {
-                const stat = fs.statSync(path);
+                // prevent from deleting project root
+                if (matchedDirectories.includes(cwd) || matchedDirectories.includes(dirName)) {
+                    results.push([pathToRemove, "skipped. Will delete working directory."]);
+                    console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete working directory. Skipping..`));
+                    return;
+                }
+                if (!this.opt.dryRun) {
+                    matchedFiles.forEach(filePath => {
+                        if (CleanDirWebpackPlugin.removeFile(filePath)) {
+                            removed.unshift(filePath);
+                        }
+                    });
 
-                if (stat.isFile()) {
-                    fs.unlinkSync(path);
-                    removed.push(path);
+                    matchedDirectories.forEach(dirPath => {
+                        if (CleanDirWebpackPlugin.removeDir(dirPath)) {
+                            removed.unshift(dirPath);
+                        }
+                    });
                 }
                 else {
-                    directories.unshift(path);
+                    removed.push(...matchedFiles);
+                    removed.push(...matchedDirectories);
                 }
+
+                this.opt.verbose
+                ? console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed.\n\tRemoved ${removed.length}:\n\t\t ${removed.join("\n\t\t")} \n\tIgnored ${ignored.length}:\n\t\t ${ignored.join("\n\t\t")}.`)
+                : console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed (${removed.length} removed, ${ignored.length} ignored).`);
             });
-
-            directories.forEach(path => {
-                const files = fs.readdirSync(path);
-
-                if (!files.length) {
-                    fs.rmdirSync(path);
-                    removed.push(path);
-                }
-            });
-
-            this.opt.verbose
-            ? console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed.\n\tRemoved ${removed.length}:\n\t\t ${removed.join("\n\t\t")} \n\tIgnored ${ignored.length}:\n\t\t ${ignored.join("\n\t\t")}.`)
-            : console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed (${removed.length} removed, ${ignored.length} ignored).`);
-        });
 
         return results;
     }
