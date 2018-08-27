@@ -102,6 +102,11 @@ class CleanDirWebpackPlugin
             webpackDir = CleanDirWebpackPlugin.fixWindowsPath(webpackDir);
         }
 
+        cwd = cwd.slice(-1) !== '/' ? cwd + '/' : cwd;
+        dirName = dirName.slice(-1) !== '/' ? dirName + '/' : dirName;
+        projectRoot = projectRoot.slice(-1) !== '/' ? projectRoot + '/' : projectRoot;
+        webpackDir = webpackDir.slice(-1) !== '/' ? webpackDir + '/' : webpackDir;
+
         const results = [];
         const excludedPaths = [];
 
@@ -111,6 +116,7 @@ class CleanDirWebpackPlugin
                                                 {
                                                     cwd:      projectRoot,
                                                     absolute: true,
+                                                    mark:     true,
                                                 }));
             });
 
@@ -129,6 +135,8 @@ class CleanDirWebpackPlugin
                     return;
                 }
 
+                pathToRemove = pathToRemove.slice(-1) === '/' ? pathToRemove + '**' : pathToRemove;
+
                 const ignored = [];
                 const removed = [];
 
@@ -138,6 +146,7 @@ class CleanDirWebpackPlugin
                 glob.sync(pathToRemove, {
                         cwd:      projectRoot,
                         absolute: true,
+                        mark:     true,
                     })
                     .forEach((match) => {
                         if (excludedPaths.includes(match)) {
