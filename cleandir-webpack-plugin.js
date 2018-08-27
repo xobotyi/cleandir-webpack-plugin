@@ -20,7 +20,7 @@ class CleanDirWebpackPlugin
     constructor(paths, options) {
         if (typeof paths === "string") {
             if (!paths) {
-                throw new TypeError(`paths expected to be a valuable string`);
+                throw new TypeError("paths expected to be a valuable string");
             }
 
             paths = [paths];
@@ -44,7 +44,7 @@ class CleanDirWebpackPlugin
 
         if (typeof this.opt.exclude === "string") {
             if (!this.opt.exclude) {
-                throw new TypeError(`options.exclude expected to be a valuable string`);
+                throw new TypeError("options.exclude expected to be a valuable string");
             }
 
             this.opt.exclude = [this.opt.exclude];
