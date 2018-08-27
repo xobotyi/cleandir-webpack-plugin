@@ -1,5 +1,8 @@
 node_modules/
 coverage/
 .idea/
+.github/
 test/
 .travis.yml
+PULL_REQUEST_TEMPLATE.md
+CODE_OF_CONDUCT.md
