@@ -19,6 +19,7 @@ class CleanDirWebpackPlugin
             paths:         [],
             exclude:       [],
             verbose:       true,
+            silent:        false,
             dryRun:        true,
             root:          path.dirname(module.parent.filename),
             allowExternal: false,
@@ -33,6 +34,9 @@ class CleanDirWebpackPlugin
         }
         if (!Array.isArray(this.opt.exclude)) {
             throw new TypeError(`exclude expected to be an array, got ${typeof this.opt.exclude}`);
+        }
+        if (!path.isAbsolute(this.opt.root)) {
+            throw new Error("project root has to be an absolute path");
         }
 
         this.clean = this.clean.bind(this);
@@ -72,9 +76,6 @@ class CleanDirWebpackPlugin
 
                 case "ENOTEMPTY":
                     return false;
-
-                case "ENOTDIR":
-                    return this.removeFile(dirPath);
             }
 
             throw e;
@@ -87,11 +88,6 @@ class CleanDirWebpackPlugin
         if (!this.opt.paths.length) {
             this.opt.verbose && console.log(chalk.yellow(`${PLUGIN_NAME}: project root has to be an absolute path. Skipping everything!`));
             return [[undefined, "paths are empty, nothing to clean"]];
-        }
-
-        if (!path.isAbsolute(this.opt.root)) {
-            this.opt.verbose && console.log(chalk.red(`${PLUGIN_NAME}: project root has to be an absolute path. Skipping everything!`));
-            return [[this.opt.root, "root path has to be an absolute"]];
         }
 
         let cwd = process.cwd();
@@ -191,9 +187,11 @@ class CleanDirWebpackPlugin
                     removed.push(...matchedDirectories);
                 }
 
-                this.opt.verbose
-                ? console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed.\n\tRemoved ${removed.length}:\n\t\t ${removed.join("\n\t\t")} \n\tIgnored ${ignored.length}:\n\t\t ${ignored.join("\n\t\t")}.`)
-                : console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed (${removed.length} removed, ${ignored.length} ignored).`);
+                if (!this.opt.silent) {
+                    this.opt.verbose
+                    ? console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed.\n\tRemoved ${removed.length}:\n\t\t ${removed.join("\n\t\t")} \n\tIgnored ${ignored.length}:\n\t\t ${ignored.join("\n\t\t")}.`)
+                    : console.log(`${PLUGIN_NAME}: '${pathToRemove}' processed (${removed.length} removed, ${ignored.length} ignored).`);
+                }
             });
 
         return results;
