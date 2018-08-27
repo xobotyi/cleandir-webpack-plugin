@@ -24,7 +24,7 @@ describe("cleandir-webpack-plugin",
 
                  it("should throw an Error if unknown stage passed", () => {
                      try {
-                         new CleanDirWebpackPlugin({stage: 'whoa!'});
+                         new CleanDirWebpackPlugin({stage: "whoa!"});
                      }
                      catch (e) {
                          expect(e).toBeInstanceOf(Error);
@@ -35,7 +35,7 @@ describe("cleandir-webpack-plugin",
              describe(".hookCallback()", () => {
                  it("should call the callback", () => {
                      const spy = jest.fn(() => {});
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**']});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"]});
 
                      plugin.hookCallback(undefined, spy);
 
@@ -43,9 +43,9 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should call the .clean() method", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**']});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"]});
 
-                     const spy = jest.spyOn(plugin, 'clean');
+                     const spy = jest.spyOn(plugin, "clean");
                      plugin.hookCallback(undefined, () => {});
 
                      expect(spy).toHaveBeenCalled();
@@ -53,24 +53,25 @@ describe("cleandir-webpack-plugin",
              });
 
              describe(".fixWindowsPath()", () => {
+
                  it("should transform the windows-stype path to unix-style", () => {
                      const transformSource = "C:\\some\\path";
 
-                     expect(CleanDirWebpackPlugin.fixWindowsPath(transformSource)).toEqual("C:/some/path");
+                     expect(CleanDirWebpackPlugin.fixWindowsPath(transformSource, true)).toEqual("C:/some/path");
                  });
 
                  it("should uppercase first symbol (it is drive letter)", () => {
                      const transformSource = "c:\\some\\path";
 
-                     expect(CleanDirWebpackPlugin.fixWindowsPath(transformSource)[0]).toEqual('C');
+                     expect(CleanDirWebpackPlugin.fixWindowsPath(transformSource)[0]).toEqual("C");
                  });
              });
 
              describe(".apply()", () => {
                  it("should instantly perform clean if first parameter not passed", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**']});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"]});
 
-                     const spy = jest.spyOn(plugin, 'clean');
+                     const spy = jest.spyOn(plugin, "clean");
 
                      plugin.apply();
                      expect(spy).toHaveBeenCalled();
@@ -88,9 +89,9 @@ describe("cleandir-webpack-plugin",
                  };
 
                  it("should throw an Error if stage changed to unsupperted after the construction", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**'], stage: 'before'});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "before"});
 
-                     plugin.opt.stage = 'hey!';
+                     plugin.opt.stage = "hey!";
 
                      try {
                          plugin.apply(compiler);
@@ -101,7 +102,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should tap the emit hook if stage === 'before'", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**'], stage: 'before'});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "before"});
 
                      plugin.apply(compiler);
 
@@ -110,7 +111,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should tap the afterEmit hook if stage === 'after'", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ['files/**'], stage: 'after'});
+                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "after"});
 
                      plugin.apply(compiler);
 

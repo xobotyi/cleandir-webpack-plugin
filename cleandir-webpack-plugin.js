@@ -39,8 +39,8 @@ class CleanDirWebpackPlugin
         this.hookCallback = this.hookCallback.bind(this);
     }
 
-    static fixWindowsPath(pathToFix) {
-        pathToFix = pathToFix.split(path.sep);
+    static fixWindowsPath(pathToFix, forceWindowsSeparatorSplit = false) {
+        pathToFix = pathToFix.split(forceWindowsSeparatorSplit ? path.win32.sep : path.sep);
         pathToFix[0] = pathToFix[0].toUpperCase();
 
         return pathToFix.join("/");
@@ -110,7 +110,7 @@ class CleanDirWebpackPlugin
         const excludedPaths = [];
 
         this.opt.exclude
-            .forEach(excludedGlob => {
+            .forEach((excludedGlob) => {
                 excludedPaths.push(...glob.sync(excludedGlob,
                                                 {
                                                     cwd:      projectRoot,
@@ -143,7 +143,7 @@ class CleanDirWebpackPlugin
                         cwd:      projectRoot,
                         absolute: true,
                     })
-                    .forEach(match => {
+                    .forEach((match) => {
                         if (excludedPaths.includes(match)) {
                             return ignored.push(match);
                         }
@@ -174,13 +174,13 @@ class CleanDirWebpackPlugin
                     return;
                 }
                 if (!this.opt.dryRun) {
-                    matchedFiles.forEach(filePath => {
+                    matchedFiles.forEach((filePath) => {
                         if (CleanDirWebpackPlugin.removeFile(filePath)) {
                             removed.unshift(filePath);
                         }
                     });
 
-                    matchedDirectories.forEach(dirPath => {
+                    matchedDirectories.forEach((dirPath) => {
                         if (CleanDirWebpackPlugin.removeDir(dirPath)) {
                             removed.unshift(dirPath);
                         }
