@@ -13,31 +13,71 @@ const STAGES = [STAGE_BEFORE, STAGE_AFTER];
 
 class CleanDirWebpackPlugin
 {
-    constructor(options) {
+    constructor(paths, options) {
+        if (typeof paths === 'string') {
+            if (!paths) {
+                throw new TypeError(`paths expected to be a valuable string`);
+            }
+
+            paths = [paths];
+        }
+        else if (!Array.isArray(paths)) {
+            throw new TypeError(`paths expected to be an array or string, got ${typeof paths}`);
+        }
+
+        this.paths = paths;
+
         this.opt = {
             stage:         STAGE_BEFORE,
-            paths:         [],
             exclude:       [],
             verbose:       true,
             silent:        false,
             dryRun:        false,
-            root:          path.dirname(module.parent.filename),
+            root:          undefined,
             allowExternal: false,
             ...options,
         };
 
+        if (typeof this.opt.exclude === 'string') {
+            if (!this.opt.exclude) {
+                throw new TypeError(`options.exclude expected to be a valuable string`);
+            }
+
+            this.opt.exclude = [this.opt.exclude];
+        }
+        else if (!Array.isArray(this.opt.exclude)) {
+            throw new TypeError(`options.exclude expected to be an array or string, got ${typeof this.opt.exclude}`);
+        }
+
+        if (this.opt.root && !path.isAbsolute(this.opt.root)) {
+            throw new Error("project root has to be an absolute path");
+        }
+
         if (!STAGES.includes(this.opt.stage)) {
             throw new Error(`stage '${this.opt.stage}' not supported`);
         }
-        if (!Array.isArray(this.opt.paths)) {
-            throw new TypeError(`paths expected to be an array, got ${typeof this.opt.paths}`);
+
+        this.opt.allowExternal = !!this.opt.allowExternal;
+        this.opt.verbose = !!this.opt.verbose;
+        this.opt.silent = !!this.opt.silent;
+        this.opt.dryRun = !!this.opt.dryRun;
+
+        this.cwd = process.cwd();
+        this.dirName = __dirname;
+        this.webpackDir = path.dirname(module.parent.filename);
+        this.projectRoot = path.resolve(this.opt.root || path.dirname(module.parent.filename));
+
+        if (IS_WINDOWS) {
+            this.cwd = CleanDirWebpackPlugin.fixWindowsPath(this.cwd);
+            this.dirName = CleanDirWebpackPlugin.fixWindowsPath(this.dirName);
+            this.webpackDir = CleanDirWebpackPlugin.fixWindowsPath(this.webpackDir);
+            this.projectRoot = CleanDirWebpackPlugin.fixWindowsPath(this.projectRoot);
         }
-        if (!Array.isArray(this.opt.exclude)) {
-            throw new TypeError(`exclude expected to be an array, got ${typeof this.opt.exclude}`);
-        }
-        if (!path.isAbsolute(this.opt.root)) {
-            throw new Error("project root has to be an absolute path");
-        }
+
+        this.cwd.slice(-1) !== "/" && (this.cwd += "/");
+        this.dirName.slice(-1) !== "/" && (this.dirName += "/");
+        this.webpackDir.slice(-1) !== "/" && (this.webpackDir += "/");
+        this.projectRoot.slice(-1) !== "/" && (this.projectRoot += "/");
 
         this.clean = this.clean.bind(this);
         this.hookCallback = this.hookCallback.bind(this);
@@ -85,27 +125,10 @@ class CleanDirWebpackPlugin
     }
 
     clean() {
-        if (!this.opt.paths.length) {
+        if (!this.paths.length) {
             !this.opt.silent && this.opt.verbose && console.log(chalk.yellow(`${PLUGIN_NAME}: paths is empty. Skipping everything!`));
             return [[undefined, "paths is empty, nothing to clean"]];
         }
-
-        let cwd = process.cwd();
-        let dirName = __dirname;
-        let projectRoot = path.resolve(this.opt.root);
-        let webpackDir = path.dirname(module.parent.filename);
-
-        if (IS_WINDOWS) {
-            cwd = CleanDirWebpackPlugin.fixWindowsPath(cwd);
-            dirName = CleanDirWebpackPlugin.fixWindowsPath(dirName);
-            projectRoot = CleanDirWebpackPlugin.fixWindowsPath(projectRoot);
-            webpackDir = CleanDirWebpackPlugin.fixWindowsPath(webpackDir);
-        }
-
-        cwd = cwd.slice(-1) !== '/' ? cwd + '/' : cwd;
-        dirName = dirName.slice(-1) !== '/' ? dirName + '/' : dirName;
-        projectRoot = projectRoot.slice(-1) !== '/' ? projectRoot + '/' : projectRoot;
-        webpackDir = webpackDir.slice(-1) !== '/' ? webpackDir + '/' : webpackDir;
 
         const results = [];
         const excludedPaths = [];
@@ -114,22 +137,22 @@ class CleanDirWebpackPlugin
             .forEach((excludedGlob) => {
                 excludedPaths.push(...glob.sync(excludedGlob,
                                                 {
-                                                    cwd:      projectRoot,
+                                                    cwd:      this.projectRoot,
                                                     absolute: true,
                                                     mark:     true,
                                                 }));
             });
 
-        this.opt.paths
+        this.paths
             .forEach((pathToRemove) => {
-                pathToRemove = path.resolve(projectRoot, pathToRemove);
+                pathToRemove = path.resolve(this.projectRoot, pathToRemove);
 
                 if (IS_WINDOWS) {
                     pathToRemove = CleanDirWebpackPlugin.fixWindowsPath(pathToRemove);
                 }
 
                 // prevent from deleting external files
-                if (!pathToRemove.includes(projectRoot) && !this.opt.allowExternal) {
+                if (!pathToRemove.includes(this.projectRoot) && !this.opt.allowExternal) {
                     results.push([pathToRemove, "skipped. Outside of root dir."]);
                     !this.opt.silent && console.log(chalk.yellow(`${PLUGIN_NAME}: "${pathToRemove}" is outside of the setted root directory. Skipping..`));
                     return;
@@ -144,7 +167,7 @@ class CleanDirWebpackPlugin
                 const matchedFiles = [];
 
                 glob.sync(pathToRemove, {
-                        cwd:      projectRoot,
+                        cwd:      this.projectRoot,
                         absolute: true,
                         mark:     true,
                     })
@@ -159,21 +182,21 @@ class CleanDirWebpackPlugin
                     });
 
                 // prevent from deleting webpack dir
-                if (matchedDirectories.includes(webpackDir)) {
+                if (matchedDirectories.includes(this.webpackDir)) {
                     results.push([pathToRemove, "skipped. Will delete webpack."]);
                     !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete webpack. Skipping..`));
                     return;
                 }
 
                 // prevent from deleting project root
-                if (matchedDirectories.includes(projectRoot)) {
+                if (matchedDirectories.includes(this.projectRoot)) {
                     results.push([pathToRemove, "skipped. Will delete root directory."]);
                     !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete project directory. Skipping..`));
                     return;
                 }
 
                 // prevent from deleting project root
-                if (matchedDirectories.includes(cwd) || matchedDirectories.includes(dirName)) {
+                if (matchedDirectories.includes(this.cwd) || matchedDirectories.includes(this.dirName)) {
                     results.push([pathToRemove, "skipped. Will delete working directory."]);
                     !this.opt.silent && console.log(chalk.red(`${PLUGIN_NAME}: '${pathToRemove}' would delete working directory. Skipping..`));
                     return;

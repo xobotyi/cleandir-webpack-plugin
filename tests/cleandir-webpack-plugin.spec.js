@@ -6,27 +6,63 @@ const rimraf = require("rimraf");
 describe("cleandir-webpack-plugin",
          () => {
              describe(".constructor()", () => {
-                 it("should throw a TypeError if paths is not an array", () => {
+                 it("should throw a TypeError if paths is not an array or valuable string", () => {
                      try {
-                         new CleanDirWebpackPlugin({paths: false});
+                         new CleanDirWebpackPlugin();
                      }
                      catch (e) {
                          expect(e).toBeInstanceOf(TypeError);
                      }
+
+                     try {
+                         new CleanDirWebpackPlugin("");
+                     }
+                     catch (e) {
+                         expect(e).toBeInstanceOf(TypeError);
+                     }
+
+                     let errorEmitted = false;
+                     try {
+                         new CleanDirWebpackPlugin("/someStuff");
+                         new CleanDirWebpackPlugin([]);
+                     }
+                     catch (e) {
+                         errorEmitted = true;
+                     }
+
+                     expect(errorEmitted).toBeFalsy();
                  });
 
-                 it("should throw a TypeError if exclude is not an array", () => {
+                 it("should throw a TypeError if exclude is not an array or valuable string", () => {
                      try {
-                         new CleanDirWebpackPlugin({exclude: false});
+                         new CleanDirWebpackPlugin([], {exclude: null});
                      }
                      catch (e) {
                          expect(e).toBeInstanceOf(TypeError);
                      }
+
+                     try {
+                         new CleanDirWebpackPlugin([], {exclude: ""});
+                     }
+                     catch (e) {
+                         expect(e).toBeInstanceOf(TypeError);
+                     }
+
+                     let errorEmitted = false;
+                     try {
+                         new CleanDirWebpackPlugin([], {exclude: "/someStuff"});
+                         new CleanDirWebpackPlugin([], {exclude: []});
+                     }
+                     catch (e) {
+                         errorEmitted = true;
+                     }
+
+                     expect(errorEmitted).toBeFalsy();
                  });
 
                  it("should throw an Error if unknown stage passed", () => {
                      try {
-                         new CleanDirWebpackPlugin({stage: "whoa!"});
+                         new CleanDirWebpackPlugin([], {stage: "whoa!"});
                      }
                      catch (e) {
                          expect(e).toBeInstanceOf(Error);
@@ -36,7 +72,7 @@ describe("cleandir-webpack-plugin",
                  it("should throw an Error if passed root is not an absolute path", () => {
                      let errorEmitted = false;
                      try {
-                         new CleanDirWebpackPlugin({root: "/someStuff"});
+                         new CleanDirWebpackPlugin([], {root: "/someStuff"});
                      }
                      catch (e) {
                          errorEmitted = true;
@@ -45,7 +81,7 @@ describe("cleandir-webpack-plugin",
                      expect(errorEmitted).toBeFalsy();
 
                      try {
-                         new CleanDirWebpackPlugin({root: "someStuff"});
+                         new CleanDirWebpackPlugin([], {root: "someStuff"});
                      }
                      catch (e) {
                          expect(e).toBeInstanceOf(Error);
@@ -56,7 +92,7 @@ describe("cleandir-webpack-plugin",
              describe(".hookCallback()", () => {
                  it("should call the callback", () => {
                      const spy = jest.fn(() => {});
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, silent: true});
 
                      plugin.hookCallback(undefined, spy);
 
@@ -64,7 +100,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should call the .clean() method", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, silent: true});
 
                      const spy = jest.spyOn(plugin, "clean");
                      plugin.hookCallback(undefined, () => {});
@@ -90,7 +126,7 @@ describe("cleandir-webpack-plugin",
 
              describe(".apply()", () => {
                  it("should instantly perform clean if first parameter not passed", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, silent: true});
 
                      const spy = jest.spyOn(plugin, "clean");
 
@@ -110,7 +146,7 @@ describe("cleandir-webpack-plugin",
                  };
 
                  it("should throw an Error if stage changed to unsupperted after the construction", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "before", silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, stage: "before", silent: true});
 
                      plugin.opt.stage = "hey!";
 
@@ -123,7 +159,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should tap the emit hook if stage === 'before'", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "before", silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, stage: "before", silent: true});
 
                      plugin.apply(compiler);
 
@@ -132,7 +168,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should tap the afterEmit hook if stage === 'after'", () => {
-                     const plugin = new CleanDirWebpackPlugin({dryRun: true, paths: ["files/**"], stage: "after", silent: true});
+                     const plugin = new CleanDirWebpackPlugin(["files/**"], {dryRun: true, stage: "after", silent: true});
 
                      plugin.apply(compiler);
 
@@ -249,7 +285,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should skip if paths is empty", () => {
-                     const plugin = new CleanDirWebpackPlugin({paths: [], silent: true});
+                     const plugin = new CleanDirWebpackPlugin([], {silent: true});
                      const result = plugin.clean();
 
                      expect(result[0][0]).toBeUndefined();
@@ -257,7 +293,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should skip external files if its not allowed", () => {
-                     const plugin = new CleanDirWebpackPlugin({paths: ["./../testFile.html"], silent: true, root: testDirPath});
+                     const plugin = new CleanDirWebpackPlugin(["./../testFile.html"], {silent: true, root: testDirPath});
                      const result = plugin.clean();
 
                      expect(result[0][0]).toEqual(testFilePath3);
@@ -265,7 +301,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should properly process glob patterns", () => {
-                     const plugin = new CleanDirWebpackPlugin({paths: ["./*.css"], silent: true, root: testDirPath});
+                     const plugin = new CleanDirWebpackPlugin(["./*.css"], {silent: true, root: testDirPath});
                      const result = plugin.clean();
 
                      expect(fs.existsSync(testFilePath1)).toBeTruthy();
@@ -273,7 +309,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should properly process exclusion glob patterns", () => {
-                     const plugin = new CleanDirWebpackPlugin({paths: ["*"], exclude: ["*.js"], silent: true, root: testDirPath});
+                     const plugin = new CleanDirWebpackPlugin(["*"], {exclude: ["*.js"], silent: true, root: testDirPath});
                      const result = plugin.clean();
 
                      expect(fs.existsSync(testFilePath1)).toBeTruthy();
@@ -281,7 +317,7 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should skip paths deleting root path", () => {
-                     const plugin = new CleanDirWebpackPlugin({paths: [testDirPath], silent: true, root: testDirPath, allowExternal: true});
+                     const plugin = new CleanDirWebpackPlugin([testDirPath], {silent: true, root: testDirPath, allowExternal: true});
                      const result = plugin.clean();
 
                      console.log(testDirPath);
@@ -297,7 +333,7 @@ describe("cleandir-webpack-plugin",
                          cwd = CleanDirWebpackPlugin.fixWindowsPath(cwd);
                      }
 
-                     const plugin = new CleanDirWebpackPlugin({paths: ['./../../'], silent: true, root: testDirPath, allowExternal: true});
+                     const plugin = new CleanDirWebpackPlugin(['./../../'], {silent: true, root: testDirPath, allowExternal: true});
                      const result = plugin.clean();
 
                      expect(result[0][0]).toEqual(cwd);
@@ -311,7 +347,7 @@ describe("cleandir-webpack-plugin",
                          webpackPath = CleanDirWebpackPlugin.fixWindowsPath(webpackPath);
                      }
 
-                     const plugin = new CleanDirWebpackPlugin({paths: [webpackPath], silent: true, root: testDirPath, allowExternal: true});
+                     const plugin = new CleanDirWebpackPlugin([webpackPath], {silent: true, root: testDirPath, allowExternal: true});
                      const result = plugin.clean();
 
                      expect(result[0][0]).toEqual(webpackPath);
@@ -319,11 +355,11 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should skip paths even if whole directory marked for deletion", () => {
-                     const plugin = new CleanDirWebpackPlugin({
-                                                                  paths:         [
-                                                                      'test_dir/**',
-                                                                      '*.html',
-                                                                  ],
+                     const plugin = new CleanDirWebpackPlugin([
+                                                                  'test_dir/**',
+                                                                  '*.html',
+                                                              ],
+                                                              {
                                                                   exclude:       [
                                                                       '**/*.css',
                                                                   ],
@@ -339,11 +375,11 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("should delete directory if it marked for deletion and empty", () => {
-                     const plugin = new CleanDirWebpackPlugin({
-                                                                  paths:         [
-                                                                      'test_dir/**',
-                                                                      '*.html',
-                                                                  ],
+                     const plugin = new CleanDirWebpackPlugin([
+                                                                  'test_dir/**',
+                                                                  '*.html',
+                                                              ],
+                                                              {
                                                                   silent:        true,
                                                                   allowExternal: false,
                                                               });
@@ -356,11 +392,11 @@ describe("cleandir-webpack-plugin",
                  });
 
                  it("dry run should not delete files", () => {
-                     const plugin = new CleanDirWebpackPlugin({
-                                                                  paths:         [
-                                                                      'test_dir/**',
-                                                                      '*.html',
-                                                                  ],
+                     const plugin = new CleanDirWebpackPlugin([
+                                                                  'test_dir/**',
+                                                                  '*.html',
+                                                              ],
+                                                              {
                                                                   dryRun:        true,
                                                                   silent:        true,
                                                                   allowExternal: false,
