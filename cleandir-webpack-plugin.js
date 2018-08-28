@@ -94,10 +94,10 @@ class CleanDirWebpackPlugin
      * @return {string}
      */
     static fixWindowsPath(pathToFix, forceWindowsSeparatorSplit = false) {
-        pathToFix = pathToFix.split(forceWindowsSeparatorSplit ? path.win32.sep : path.sep);
-        pathToFix[0] = pathToFix[0].toUpperCase();
+        const splittedPath = pathToFix.split(forceWindowsSeparatorSplit ? path.win32.sep : path.sep);
+        splittedPath[0] = splittedPath[0].toUpperCase();
 
-        return pathToFix.join("/");
+        return splittedPath.join("/");
     }
 
     /**

@@ -203,11 +203,29 @@ describe("cleandir-webpack-plugin",
 
                      expect(errorEmitted).toBeFalsy();
                  });
+
+                 it("should rethrow non ENOENT errors", () => {
+                     const origFn = fs.unlinkSync;
+                     fs.unlinkSync = () => {
+                         const e = new Error("EPERM");
+                         e.code = 'EPERM';
+                         throw e;
+                     };
+
+                     try {
+                         CleanDirWebpackPlugin.removeFile(testFilePath);
+                     }
+                     catch (e) {
+                         expect(e.code).toEqual('EPERM');
+                     }
+
+                     fs.unlinkSync = origFn;
+                 });
              });
 
              describe(".removeDir()", () => {
-                 const testDirPath = path.join(__dirname, 'testDir');
-                 const testFilePath = path.join(__dirname, 'testDir', 'testFile');
+                 const testDirPath = path.join(__dirname, "testDir");
+                 const testFilePath = path.join(__dirname, "testDir", "testFile");
 
                  it("should remove directory if it exists", () => {
                      fs.mkdirSync(testDirPath);
@@ -254,13 +272,31 @@ describe("cleandir-webpack-plugin",
                      fs.unlinkSync(testFilePath);
                      fs.rmdirSync(testDirPath);
                  });
+
+                 it("should rethrow non ENOENT or ENOTEMPTY errors", () => {
+                     const origFn = fs.rmdirSync;
+                     fs.rmdirSync = () => {
+                         const e = new Error("EPERM");
+                         e.code = 'EPERM';
+                         throw e;
+                     };
+
+                     try {
+                         CleanDirWebpackPlugin.removeDir(testFilePath);
+                     }
+                     catch (e) {
+                         expect(e.code).toEqual('EPERM');
+                     }
+
+                     fs.rmdirSync = origFn;
+                 });
              });
 
              describe(".clean()", () => {
-                 let testDirPath = path.join(__dirname, 'test_dir');
-                 let testFilePath1 = path.join(testDirPath, 'testFile.js');
-                 let testFilePath2 = path.join(testDirPath, 'testFile.css');
-                 let testFilePath3 = path.join(__dirname, 'testFile.html');
+                 let testDirPath = path.join(__dirname, "test_dir");
+                 let testFilePath1 = path.join(testDirPath, "testFile.js");
+                 let testFilePath2 = path.join(testDirPath, "testFile.css");
+                 let testFilePath3 = path.join(__dirname, "testFile.html");
 
                  if (process.platform === "win32") {
                      testDirPath = CleanDirWebpackPlugin.fixWindowsPath(testDirPath);
@@ -320,10 +356,8 @@ describe("cleandir-webpack-plugin",
                      const plugin = new CleanDirWebpackPlugin([testDirPath], {silent: true, root: testDirPath, allowExternal: true});
                      const result = plugin.clean();
 
-                     console.log(testDirPath);
-
                      expect(result[0][0]).toEqual(testDirPath);
-                     expect(result[0][1]).toEqual('skipped. Will delete root directory.');
+                     expect(result[0][1]).toEqual("skipped. Will delete root directory.");
                  });
 
                  it("should skip paths deleting cwd", () => {
@@ -333,11 +367,11 @@ describe("cleandir-webpack-plugin",
                          cwd = CleanDirWebpackPlugin.fixWindowsPath(cwd);
                      }
 
-                     const plugin = new CleanDirWebpackPlugin(['./../../'], {silent: true, root: testDirPath, allowExternal: true});
+                     const plugin = new CleanDirWebpackPlugin(["./../../"], {silent: true, root: testDirPath, allowExternal: true});
                      const result = plugin.clean();
 
                      expect(result[0][0]).toEqual(cwd);
-                     expect(result[0][1]).toEqual('skipped. Will delete working directory.');
+                     expect(result[0][1]).toEqual("skipped. Will delete working directory.");
                  });
 
                  it("should skip paths deleting webpack", () => {
@@ -351,17 +385,17 @@ describe("cleandir-webpack-plugin",
                      const result = plugin.clean();
 
                      expect(result[0][0]).toEqual(webpackPath);
-                     expect(result[0][1]).toEqual('skipped. Will delete webpack.');
+                     expect(result[0][1]).toEqual("skipped. Will delete webpack.");
                  });
 
                  it("should skip paths even if whole directory marked for deletion", () => {
                      const plugin = new CleanDirWebpackPlugin([
-                                                                  'test_dir/**',
-                                                                  '*.html',
+                                                                  "test_dir/**",
+                                                                  "*.html",
                                                               ],
                                                               {
                                                                   exclude:       [
-                                                                      '**/*.css',
+                                                                      "**/*.css",
                                                                   ],
                                                                   silent:        true,
                                                                   allowExternal: false,
@@ -376,8 +410,8 @@ describe("cleandir-webpack-plugin",
 
                  it("should delete directory if it marked for deletion and empty", () => {
                      const plugin = new CleanDirWebpackPlugin([
-                                                                  'test_dir/**',
-                                                                  '*.html',
+                                                                  "test_dir/**",
+                                                                  "*.html",
                                                               ],
                                                               {
                                                                   silent:        true,
@@ -393,8 +427,8 @@ describe("cleandir-webpack-plugin",
 
                  it("dry run should not delete files", () => {
                      const plugin = new CleanDirWebpackPlugin([
-                                                                  'test_dir/**',
-                                                                  '*.html',
+                                                                  "test_dir/**",
+                                                                  "*.html",
                                                               ],
                                                               {
                                                                   dryRun:        true,
@@ -407,6 +441,25 @@ describe("cleandir-webpack-plugin",
                      expect(fs.existsSync(testFilePath2)).toBeTruthy();
                      expect(fs.existsSync(testFilePath1)).toBeTruthy();
                      expect(fs.existsSync(testFilePath3)).toBeTruthy();
+                 });
+
+                 it("verbose mode should output result of processing of each glob", () => {
+                     const origLog = global.console.log;
+                     global.console.log = jest.fn(() => {});
+                     const plugin = new CleanDirWebpackPlugin([
+                                                                  "test_dir/**",
+                                                                  "*.html",
+                                                              ],
+                                                              {
+                                                                  dryRun:        true,
+                                                                  silent:        false,
+                                                                  verbose:       true,
+                                                                  allowExternal: false,
+                                                              });
+                     const result = plugin.clean();
+
+                     expect(global.console.log).toHaveBeenCalledTimes(2);
+                     global.console.log = origLog;
                  });
              });
          });
