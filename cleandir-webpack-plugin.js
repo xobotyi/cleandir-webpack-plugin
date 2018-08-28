@@ -3,7 +3,7 @@ const path = require("path");
 const chalk = require("chalk");
 const glob = require("glob");
 
-const IS_WINDOWS = require("os").platform() === "win32";
+const os = require("os");
 
 const PLUGIN_NAME = "cleandir-webpack-plugin";
 
@@ -15,7 +15,7 @@ class CleanDirWebpackPlugin
 {
     /**
      * @param paths {array<string>|string}
-     * @param options {object}
+     * @param options {object=}
      */
     constructor(paths, options) {
         if (typeof paths === "string") {
@@ -71,7 +71,7 @@ class CleanDirWebpackPlugin
         this.webpackDir = path.dirname(module.parent.filename);
         this.projectRoot = path.resolve(this.opt.root || path.dirname(module.parent.filename));
 
-        if (IS_WINDOWS) {
+        if (os.platform() === "win32") {
             this.cwd = CleanDirWebpackPlugin.fixWindowsPath(this.cwd);
             this.dirName = CleanDirWebpackPlugin.fixWindowsPath(this.dirName);
             this.webpackDir = CleanDirWebpackPlugin.fixWindowsPath(this.webpackDir);
@@ -165,7 +165,7 @@ class CleanDirWebpackPlugin
             .forEach((pathToRemove) => {
                 pathToRemove = path.resolve(this.projectRoot, pathToRemove);
 
-                if (IS_WINDOWS) {
+                if (os.platform() === "win32") {
                     pathToRemove = CleanDirWebpackPlugin.fixWindowsPath(pathToRemove);
                 }
 
