@@ -8,8 +8,9 @@
     <a href="https://www.codacy.com/app/xobotyi/cleandir-webpack-plugin"><img src="https://api.codacy.com/project/badge/Coverage/d014e06fb8a94b2480d3e6827c1d6d3e"/></a>
     <a href="https://www.npmjs.com/package/cleandir-webpack-plugin"><img src="https://img.shields.io/npm/l/cleandir-webpack-plugin.svg" /></a>
 </p>
-This plugin allow you to delete files/directories before or after bundle compilation.  
-Comparing to most popular cleanup plugin, `cleandir-webpack-plugin` providies you with ability to run plugin after files was written to output directory and ability to exclude files with glob patterns.
+
+This plugin allows you to delete files/directories before or after bundle compilation.  
+Comparing to most popular cleanup plugin, `cleandir-webpack-plugin` provides you with ability to run plugin after files was written to output directory and ability to exclude files with glob patterns.
 
 ## Installation
 ```bash
